@@ -1,0 +1,626 @@
+<html>
+  <head>
+    <title></title>
+    <meta content="">
+    <style>
+    /*
+/*
+/*
+To get Fabric.JS working for what we need:
+A function that gets the url or SVG string of each product image to be used, and imports it to the canvas. It finds every text within that SVG and makes it a seperate, editable object.
+Start by searching other custom solutions to see if a simple solution exists, like with saving or custom bounding boxes, etc.
+
+/*
+Setting text:
+group.item(1).set({
+  text: 'trololo',
+  fill: 'white'
+});
+
+A lot about manipulating text with fabric:
+http://fabricjs.com/fabric-intro-part-2
+*/
+.property-box {
+  padding: 10px; 
+  margin: 5px; 
+  border: 1px solid gainsboro;
+}
+
+.colorbox {
+  width: 70px; 
+  height: 35px; 
+  border: 1px solid black;
+}
+
+.btn-sm {
+  min-width: 50px;
+}
+input {
+  font-size:10px;
+  line-height:50%;
+  padding:0;
+  margin:0;
+}
+canvas {
+ 
+}
+.svgshapes {
+  width:30px;
+  height:30px;
+}
+.svgtri {
+  background:
+  conic-gradient(
+    from 145deg,
+    currentColor 0, currentColor 20%, transparent 20%
+  )
+  50% -50% / 80% 80%
+  no-repeat;
+}
+.svgrect {
+  background:
+  linear-gradient(currentColor, currentColor)
+  50% / 50% 50%
+  no-repeat;
+}
+.svgcir {
+  background:
+  radial-gradient(currentColor 50%, transparent 50%)
+  50% / 75% 75%
+  no-repeat;
+}
+    </style>
+  </head>
+  <body>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+   <link href="https://ajax.googleapis.com/ajax/libs/angular_material/1.1.0/angular-material.min.css" rel="stylesheet">
+    <link href="https://rawgit.com/ONE-LOGIC/md-color-menu/master/md-color-menu.css" rel="stylesheet">
+     
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/3.4.0/fabric.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.6/angular.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.6/angular-animate.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.6/angular-aria.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angular_material/1.1.0/angular-material.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <script src="https://rawgit.com/ONE-LOGIC/md-color-menu/master/md-color-menu.js"></script>
+     <div ng-app="app">
+  <div ng-controller="MainController as main" layout="row">
+    <div>
+      <canvas id="c"></canvas>
+    </div> 
+    <div flex>
+      <h2 style="text-align: center;">Toolbox</h2>
+      <div>
+        <md-button class="md-raised" ng-click="main.addSVG()">Add SVG
+        </md-button>
+        
+        <md-button id="imageSaver" class="md-raised" href="#">Save PNG
+        </md-button>
+        <md-button id="imageSaverSVG" class="md-raised" href="#">Save SVG
+        </md-button>
+        <md-button id="imageLoader" type="file" name="imageLoader" class="md-raised">Upload Image
+        <input type="file" /></md-button>
+        <md-button id="imageSvgLoader" type="file" name="imageSvgLoader" class="md-raised">Upload SVG
+        <input type="file" /></md-button>
+        <md-button class="md-raised" ng-click="main.addText()">Add Text
+        </md-button>
+        
+        <md-button class="md-raised" ng-click="main.addImage($event)">Add Image
+        </md-button>
+         <md-button class="md-raised" ng-click="main.copy()">Copy
+        </md-button>
+         <md-button class="md-raised" ng-click="main.paste()">Paste
+        </md-button>
+        <md-button class="md-raised md-warn" ng-click="main.remove()">Remove
+        </md-button>
+      </div>
+    
+      <div ng-show="main.activeObject" class="property-box" style="verticali-align:middle;align-items:center;display:flex">
+ Add Shapes:  <svg class="svgshapes svgrect" ng-click="main.addRect()"></svg>
+        <svg class="svgshapes svgcir" ng-click="main.addCircle()"></svg>
+        <svg class="svgshapes svgtri" ng-click="main.addTriangle()"></svg>
+        
+       
+            </div>
+      <div ng-show="main.activeObject" class="property-box">
+        <div ng-show="main.activeObject.type !== 'image'">
+          <md-color-menu color="main.color">
+            <div class="colorbox" ng-style="main.getStyle()">
+            </div>
+          </md-color-menu>
+          <span>Fill: {{main.activeObject.fill}}</span>
+        </div>
+        <div>
+          <md-slider-container>
+            <span>Opacity</span>
+            <md-slider
+                       ng-model="main.opacity"
+                       ng-change="main.setOpacity()"
+                       min="0" 
+                       max="100"
+                       step="1"
+                       class="md-primary">
+            </md-slider>
+            <md-input-container>
+              <input  
+                     ng-model="main.opacity"
+                     ng-change="main.setOpacity()" />
+            </md-input-container>
+          </md-slider-container>
+        </div>
+        <div layout="row">
+          <md-button class="md-raised btn-sm" ng-click="main.activeObject.bringForward()">↑
+            <md-tooltip md-direction="bottom">Bring forward</md-tooltip>
+          </md-button>
+          <md-button class="md-raised btn-sm" ng-click="main.activeObject.bringToFront()">⇑
+            <md-tooltip md-direction="bottom">Bring to front</md-tooltip>
+          </md-button>
+          <md-button class="md-raised btn-sm" ng-click="main.activeObject.sendBackwards()">↓
+            <md-tooltip md-direction="bottom">Send backwards</md-tooltip>
+          </md-button>
+          <md-button class="md-raised btn-sm" ng-click="main.activeObject.sendToBack()">⇓
+            <md-tooltip md-direction="bottom">Send to back</md-tooltip>
+          </md-button>
+        </div>
+      </div>
+      <div ng-show="main.activeObject.type === 'i-text'" class="property-box">
+        <div>
+          <span>Font size: {{ main.getFontSize() }}
+          </span><br />
+          <span>Font family: {{main.activeObject.fontFamily}}
+          </span><br />
+          <span>Text align: {{main.activeObject.textAlign}}
+          </span><br />
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+var canvas = this.__canvas = new fabric.Canvas('cx');
+var svg = '';
+
+
+
+function ConvertToIText(obj) {
+  var text = obj.text;
+  var textobj = obj.toObject();
+  delete textobj.text;
+  delete textobj.type;
+  var itext =  new fabric.IText(text, textobj);
+  itext.styles = {}
+  
+  return itext;
+}
+
+fabric.loadSVGFromString(svg, function(objects, options) {
+
+  for (var i = 0; i < objects.length; i++) {
+    var obj = objects[i];
+
+    if (obj.type == 'text') {
+      
+      obj = ConvertToIText(obj);
+      obj.firstText = obj.text;
+      console.log(obj.textContent);
+      obj.textState = 'original';
+      canvas.add(obj);
+      canvas.bringForward(obj);
+    }
+   else {
+     if (restof) {
+       restof.push(obj);
+     }
+     else {
+     var restof = [];
+     
+     }
+   }
+  }
+  var chon = fabric.util.groupSVGElements(restof);
+  
+  canvas.add(chon);
+  canvas.sendToBack(chon);
+  
+  canvas.renderAll();
+});
+canvas.on('after:render', function() {
+    canvas.contextContainer.strokeStyle = '#555';
+
+    canvas.forEachObject(function(obj) {
+      var bound = obj.getBoundingRect();
+
+      canvas.contextContainer.strokeRect(
+        bound.left + 0.5,
+        bound.top + 0.5,
+        bound.width,
+        bound.height
+      );
+    })
+  });
+!function(a){"use strict";"function"==typeof define&&define.amd?define(["jquery"],a):"object"==typeof exports?module.exports=a(require("jquery")):a(jQuery)}(function(a){"use strict";
+function getSvgTextContent(eachSvg){
+	var whoa = [],done = [], stuff = {}, ok = [];
+	a(eachSvg).each(function(){
+		var textEl = Array.from(this.querySelectorAll('text'));
+		a(textEl).each(function(){	
+		whoa.push(Array.of(this.textContent.replace(/\s{2,}|\r|\n|\t/ig, "")+' '+this.getAttribute('transform').replace(/\s{2,}|\r|\n|\t/ig, "")).join());
+		});
+		var noDupes = [...new Set(whoa)];
+		for (var i = 0; i < noDupes.length; i++) {
+			if (noDupes[i].match(/translate/g)) {
+				var parts  = /([^)(]+) translate\(\s*([^\s,)]+)[ ,]([^\s,)]+)/.exec(noDupes[i]);
+				stuff[parts[1]] = Number(parts[3]);
+			}
+			else if (noDupes[i].match(/matrix/g)) {
+				var mat  = /([^)(]+) matrix\((\s*[^\s,]+.+[ \s][^\s,]+)\)/.exec(noDupes[i]);
+				ok = mat[2].split(" ");
+				stuff[mat[1]] = Number(ok[5]);
+			}					
+	}
+	for (var d in stuff) {
+    	done.push([d, stuff[d]]);
+	}
+done.sort(function(a, b) {return a[1] - b[1];});
+		done.forEach(function(d,it) {
+	document.styleSheets[0].addRule('div.summary.entry-summary > form > p:nth-child('+(it+1)+') > label:after,div.summary.entry-summary > form > div > div.woocommerce-variation-add-to-cart > p:nth-child('+(it+1)+') > label:after','content: " ('+d[0]+')";text-transform:capitalize!important');
+     console.log('whoa: ')
+      console.log(whoa);
+      console.log('noDupes');
+      console.log(noDupes);
+      console.log('stuff: ');
+      console.log(stuff);
+      console.log(textEl);
+      
+		});
+     
+	});
+   return whoa;
+}
+var jablo = getSvgTextContent(svg);
+console.log(jablo);
+
+for (var i = 0; i < jablo.length; i++) {
+  console.log(i);
+}
+
+});
+var app;
+
+(function (app) {
+  var MainController = /** @class */function () {
+    function MainController($scope, mdPickerColors, dlg) {
+      
+      var _this = this;
+      this.$scope = $scope;
+      this.mdPickerColors = mdPickerColors;
+      this.dlg = dlg;
+      this.initCanvas = function () {
+        _this.canvas = new fabric.Canvas('c');
+        _this.canvas.setDimensions({
+          width: window.innerWidth * 0.7,
+          height: window.innerHeight });
+
+        _this.canvas.setBackgroundColor('#565656', _this.canvas.renderAll.bind(_this.canvas));
+        // extra canvas settings
+        _this.canvas.preserveObjectStacking = true;
+        _this.canvas.stopContextMenu = true;
+        _this.canvas.on('object:selected', function () {
+          _this.$scope.$evalAsync(function () {
+            _this.activeObject = _this.canvas.getActiveObject();
+            _this.color = _this.mdPickerColors.getColor(_this.activeObject.get('fill'));
+            _this.opacity = _this.activeObject.get('opacity') * 100;
+            console.log('thisactive');
+            console.log(_this.activeObject);
+          });
+        });
+        _this.canvas.on('selection:cleared', function () {
+          _this.$scope.$evalAsync(function () {
+            _this.activeObject = null;
+            _this.color = null;
+            _this.opacity = 0;
+          });
+        });
+        _this.canvas.on('selection:updated', function () {
+          
+          _this.$scope.$evalAsync(function () {
+            _this.activeObject = _this.canvas.getActiveObject();
+            console.log('thisactive');
+            console.log(_this.canvas.getObjects(3));
+           // if (_this.activeObject.text !== null) {
+              for (var i = 0; i < _this.canvas.getObjects(); i ++) {
+                console.log(_this.canvas.getObjects(i).text);
+              
+              if (_this.activeObject.text === _this.canvas.getObjects(i)) {
+                  console.log('equal');
+                  }
+              }
+             // }
+              
+            _this.color = _this.mdPickerColors.getColor(_this.activeObject.get('fill'));
+            _this.opacity = +(_this.activeObject.get('opacity') * 100).toFixed();
+          });
+        });
+      };
+      this.onWindowResize = function () {
+        _this.canvas.setDimensions({
+          width: window.innerWidth * 0.7,
+          height: window.innerHeight });
+
+      };
+      var copiedObject;
+this.copy = function (){
+
+   
+  
+  if(_this.canvas.getActiveObject()){
+      console.log(_this.canvas.getActiveObject());
+        var object = fabric.util.object.clone(_this.canvas.getActiveObject());
+        copiedObject = object;
+         if(copiedObject){
+    	copiedObject= fabric.util.object.clone(copiedObject);
+		copiedObject.set("top", 150);
+    	copiedObject.set("left", 150);
+        _this.canvas.add(copiedObject);
+        _this.canvas.item(canvas.size() - 1).hasControls = true;
+    }
+    _this.canvas.renderAll();  
+        
+    }
+}
+
+
+      this.addText = function () {
+        var text = new fabric.IText('Sample Text', {
+          left: _this.canvas.width / 2,
+          top: _this.canvas.height / 2,
+          fill: '#e0f7fa',
+          fontFamily: 'sans-serif',
+          hasRotatingPoint: false,
+          centerTransform: true,
+          originX: 'center',
+          originY: 'center',
+          lockUniScaling: true });
+
+        _this.canvas.add(text);
+        text.on('scaling', function () {
+          _this.$scope.$evalAsync();
+        });
+      };
+      this.addRect = function () {
+        _this.canvas.add(new fabric.Rect({
+          left: _this.canvas.width / 2,
+          top: _this.canvas.height / 2,
+          fill: '#ffa726',
+          width: 100,
+          height: 100,
+          originX: 'center',
+          originY: 'center',
+          strokeWidth: 0 }));
+
+      };
+      this.addSVG = function () {
+        fabric.loadSVGFromString(svg, function(objects, options) {
+
+  for (var i = 0; i < objects.length; i++) {
+    var obj = objects[i];
+
+    if (obj.type == 'text') {
+      
+      obj = ConvertToIText(obj);
+      //obj.firstText = obj.text;
+      //console.log(obj.textContent);
+      //obj.textState = 'original';
+      console.log(obj);
+      var tranX = obj.translateX;
+      console.log(tranX);
+      var tranY = obj.translateY;
+      obj.set({
+        //left: _this.canvas.width / 2 - tranX,
+         // top: _this.canvas.height / 2 - tranY,
+          hasRotatingPoint: true,
+          centerTransform: true,
+          lockUniScaling: true,
+        
+      });
+      _this.canvas.add(obj);
+     // _this.canvas.bringForward(obj);
+    }
+   else {
+     if (restof) {
+       restof.push(obj);
+     }
+     else {
+     var restof = [];
+     
+     }
+   }
+  }
+   var imageLoader = document.getElementById('imageLoader');
+imageLoader.addEventListener('change', handleImage, false);
+          
+   var imageSvgLoader = document.getElementById('imageSvgLoader');
+imageSvgLoader.addEventListener('change', handleSvgImage, false);
+
+function handleImage(e) {
+    var reader = new FileReader();
+    reader.onload = function (event) {
+        var img = new Image();
+        img.onload = function () {
+            var imgInstance = new fabric.Image(img, {
+                scaleX: 1,
+                scaleY: 1
+            })
+            _this.canvas.add(imgInstance);
+        }
+        img.src = event.target.result;
+    }
+    reader.readAsDataURL(e.target.files[0]);
+}
+
+function handleSvgImage(e) {
+  
+    var reader = new FileReader();
+  
+    reader.onload = function (event) {
+      console.log(event.target.result);
+        var img = new Image();
+      
+        img.onload = function () {
+          
+            var imgInstance = new fabric.Image(img, {
+                scaleX: 1,
+                scaleY: 1
+            })
+           
+            _this.canvas.add(imgInstance);
+        }
+        img.src = event.target.result;
+      
+    }
+    reader.readAsDataURL(e.target.files[0]);
+} 
+         
+var imageSaver = document.getElementById('imageSaver');
+imageSaver.addEventListener('click', saveImage, false);
+
+var imageSaverSVG = document.getElementById('imageSaverSVG');
+imageSaverSVG.addEventListener('click', saveSVGImage, false);
+
+function saveSVGImage(e) {
+    this.href = _this.canvas.toSVG();
+    this.download = 'testSVG.svg';
+  console.log(_this.canvas.toSVG());
+} 
+function saveImage(e) {
+    this.href = _this.canvas.toDataURL({
+        format: 'png'
+    });
+    this.download = 'testPNG.png'
+}
+          
+
+  var chon = fabric.util.groupSVGElements(restof);
+  //chon.set({//left: _this.canvas.width / 2,
+          //top: _this.canvas.height / 2,
+          // originX: 'center',
+        //  originY: 'center',});
+  _this.canvas.add(chon);
+  _this.canvas.sendToBack(chon);
+  
+  //_this.canvas.renderAll();
+});
+        
+      };
+      this.addCircle = function () {
+        _this.canvas.add(new fabric.Circle({
+          left: _this.canvas.width / 2,
+          top: _this.canvas.height / 2,
+          fill: '#26a69a',
+          radius: 50,
+          originX: 'center',
+          originY: 'center',
+          strokeWidth: 0 }));
+
+      };
+      this.addTriangle = function () {
+        _this.canvas.add(new fabric.Triangle({
+          left: _this.canvas.width / 2,
+          top: _this.canvas.height / 2,
+          fill: '#78909c',
+          width: 100,
+          height: 100,
+          originX: 'center',
+          originY: 'center',
+          strokeWidth: 0 }));
+
+      };
+      this.test = function () {
+        if (_this.activeObject != null) {
+         if  (_this.activeObject == iText) {
+           
+         }
+        }
+        _this.canvas.add(new fabric.Triangle({
+          left: _this.canvas.width / 2,
+          top: _this.canvas.height / 2,
+          fill: '#78909c',
+          width: 100,
+          height: 100,
+          originX: 'center',
+          originY: 'center',
+          strokeWidth: 0 }));
+
+      };
+      this.addImage = function (ev) {
+        var confirm = _this.dlg.prompt().
+        title('Add Image').
+        textContent('Copy and paste link of the image:').
+        placeholder('http://myimageurl.com').
+        ariaLabel('Image Url').
+        targetEvent(ev).
+        ok('Ok').
+        cancel('Cancel');
+        _this.dlg.show(confirm).then(function (result) {
+          fabric.Image.fromURL(result, function (img) {
+            _this.canvas.add(img);
+          });
+        });
+      };
+      this.remove = function () {
+        var activeObjects = _this.canvas.getActiveObjects();
+        _this.canvas.discardActiveObject();
+        if (activeObjects.length) {
+          _this.canvas.remove.apply(_this.canvas, activeObjects);
+        }
+      };
+      this.getStyle = function () {
+        if (_this.activeObject != null) {
+          if (_this.color != null) {
+            if (_this.color.hex !== _this.activeObject.fill.toLowerCase()) {
+              _this.activeObject.set('fill', _this.color.hex);
+              _this.canvas.requestRenderAll();
+            }
+            return _this.color.style;
+          } else
+          {
+            return {
+              'background-color': _this.activeObject.fill,
+              'color': _this.activeObject.fill };
+
+          }
+        }
+      };
+      this.getFontSize = function () {
+        if (!_this.activeObject) {
+          return 0;
+        }
+        var size = _this.activeObject.fontSize || 0;
+        return +(size * _this.activeObject.scaleX).toFixed();
+      };
+      this.setOpacity = function () {
+        if (_this.opacity < 0) {
+          _this.opacity = 0;
+        }
+        if (_this.opacity > 100) {
+          _this.opacity = 100;
+        }
+        _this.activeObject.set('opacity', _this.opacity / 100);
+        _this.canvas.requestRenderAll();
+      };
+      this.initCanvas();
+      this.addSVG();
+      this.canvas.setActiveObject(this.canvas.item(0));
+      window.addEventListener('resize', this.onWindowResize);
+    }
+    MainController.$inject = ['$scope', 'mdPickerColors', '$mdDialog'];
+    return MainController;
+  }();
+  angular.
+  module('app', ['ngMaterial', 'mdColorMenu']).
+  controller('MainController', MainController);
+})(app || (app = {}));
+</script>
+  </body>
+</html>
